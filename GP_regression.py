@@ -25,8 +25,8 @@ class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
         #  return (First_part + Second_part)
 
 
-        print('shape_of_input1:', np.shape(input1))
-        print('shape_of_input1:', np.shape(input2))
+        # print('shape_of_input1:', np.shape(input1))
+        # print('shape_of_input1:', np.shape(input2))
 
         fst_input1 = input1[:,0:9]
         fst_input2 = input2[:,0:9]
@@ -35,7 +35,7 @@ class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
 
         fst_mat = self. sigma1  ** 2 * np.exp( mul_matrix)
 
-        print('shape_of_mul_matrix:', np.shape(mul_matrix))
+        # print('shape_of_mul_matrix:', np.shape(mul_matrix))
 
         sec_input1 = input1[:,9:]
         sec_input2 = input2[:,9:]
@@ -44,7 +44,7 @@ class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
 
         dist_matrix = np.sum(sec_input1**2, 1).reshape(-1, 1) + np.sum(sec_input2**2, 1) - 2 * np.dot(sec_input1, sec_input2.T)
 
-        print('shape_of_dist_matrix:', np.shape(dist_matrix))
+        # print('shape_of_dist_matrix:', np.shape(dist_matrix))
 
         sec_mat = self. sigma2  ** 2 * np.exp(- 0.5 / self. l ** 2 * dist_matrix)
         return  np.multiply(fst_mat, sec_mat)
@@ -121,20 +121,49 @@ class Gaussian_Process_Regression:
 
                  # [feature_num] *  [feature_num X feature_num] * [feature_num X output_dim] = [1 X output_dim]
 
+def ConEn_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num):
+    serials = random.sample(range(gpr. feature_num),initial_num)
+    print('ConEn_optimize_feature_num:', gpr. feature_num)
+
+    X_data = gpr.X[serials,:]
+    Y_data = gpr.Y[serials,:]
+
+    remain_data_serial = set([i for i in range(gpr.feature_num)]) - set(serials)
+
+    for k in range(target_num - initial_num):
+        # Gram_matrix_before = gpr.kernel.compute(X_data, X_data)
+
+        list_remain_data_serial = list(remain_data_serial)
+        
+        critics_index = [0.0] * len(list_remain_data_serial)
+
+        for h in range(len (list_remain_data_serial)):
+            X_data_temp = np.row_stack((X_data, gpr.X[list_remain_data_serial[h]]))
+            Gram_matrix_after = gpr.kernel.compute(X_data_temp, X_data_temp)
+            
+            critics_index[h] = - np.linalg.det(Gram_matrix_after)
+
+        selected_one = critics_index.index(max(critics_index))
+        X_data = np.row_stack((X_data, gpr.X[list_remain_data_serial[selected_one]]))
+        Y_data = np.row_stack((Y_data, gpr.Y[list_remain_data_serial[selected_one]]))
+
+        remain_data_serial = remain_data_serial - set([selected_one])
+
+    gpr.fit(X_data, Y_data)
+
+    return gpr
+
+            # Y_data_temp = np.row_stack((Y_data, gpr.Y[list_remain_data_serial[h]]))
+
 def Gram_optimize(gpr:Gaussian_Process_Regression, target_num, compare_seed_num):
     critics_index = np.zeros(gpr. feature_num) 
     for k in range(gpr. feature_num):
         ran = random.sample(range(gpr. feature_num),compare_seed_num)
-        Gram_matrix =np.mat(np.zeros([compare_seed_num + 1, compare_seed_num + 1]))
+        
         X_test = gpr.X[ran,:]
         X_test_plus_here = np.row_stack((X_test, np.array([gpr.X[k,:]])))
-        # print('X_test_plus_here_shape:', np.shape(X_test_plus_here))
-        for i in range( compare_seed_num + 1 ):
-            for j in range( compare_seed_num + 1 ):
-                if i <= j:
-                    Gram_matrix[i,j] = gpr. kernel. compute(X_test_plus_here[i], X_test_plus_here[j])
-                else:
-                    Gram_matrix[i,j] = Gram_matrix[j,i]
+        Gram_matrix = gpr.kernel.compute(X_test_plus_here,X_test_plus_here)
+
         
         critics_index[k] = np.linalg.det(Gram_matrix)
         

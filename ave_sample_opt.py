@@ -4,6 +4,7 @@ from GP_regression import Gaussian_Process_Regression
 from GP_regression import Gram_optimize
 from GP_regression import PI_Bayes_optimize
 from GP_regression import Exp_optimize
+from GP_regression import ConEn_optimize
 
 import scipy.io as scio
 from scipy.spatial.transform import Rotation as R
@@ -45,8 +46,8 @@ FirstFlag = True
 
 fb, fa = signal.butter(3, 8e-3)
 
-for i in range(Ex_num-1):
-    for j in range(Ta_num-1):
+for i in range(Ex_num):
+    for j in range(Ta_num):
         path = Dir + Experiment_name_list[i] + Task_list[j] + Rear_name
         Data =  scio.loadmat(path)
         print('path: ', path)
@@ -137,20 +138,20 @@ for i in range(Ex_num-1):
         
 
 
-        if i == 1 and j == 0:
+        if i == 1 and j == 2:
             X_test = X_data
             Y_test = Y_data
 
-        # else:
-        if (FirstFlag):
-            X_data_all = X_data
-            Y_data_all = Y_data
-            FirstFlag = False
         else:
-            X_data_all = np.concatenate((X_data_all,X_data),axis=0)
-            Y_data_all = np.concatenate((Y_data_all,Y_data),axis=0)
-        print('X_data_all shape:', np.shape(X_data_all))
-        print('Y_data_all shape:', np.shape(Y_data_all))
+            if (FirstFlag):
+                X_data_all = X_data
+                Y_data_all = Y_data
+                FirstFlag = False
+            else:
+                X_data_all = np.concatenate((X_data_all,X_data),axis=0)
+                Y_data_all = np.concatenate((Y_data_all,Y_data),axis=0)
+            print('X_data_all shape:', np.shape(X_data_all))
+            print('Y_data_all shape:', np.shape(Y_data_all))
 
 
 # print('Total_body_rotation_list length:', len(Total_body_rotation_list))
@@ -187,7 +188,7 @@ train_Y = Y_data_all[ran,:]
 
 gpr = Gaussian_Process_Regression('scalar_para_von_mises_RBF_kernel_with_9_rot_vec')
 gpr.fit(train_X, train_Y)
-# gpr =PI_Bayes_optimize(gpr, 200, 20)
+gpr =Gram_optimize(gpr, 500, 12)
 # gpr.remove_feature_at([0,1,3])
 [mu, cov] = gpr.predict(X_test)
 
