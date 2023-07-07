@@ -1,7 +1,7 @@
 import numpy as np
 # from GP_regression import scalar_para_RBF_kernel
 from GP_regression import Gaussian_Process_Regression
-from GP_regression import Gram_optimize
+from GP_regression import DGram_optimize
 from GP_regression import PI_Bayes_optimize
 from GP_regression import Exp_optimize
 from GP_regression import ConEn_optimize
@@ -44,7 +44,7 @@ print('Ta_num: ',Ta_num)
 
 FirstFlag = True
 
-fb, fa = signal.butter(3, 8e-3)
+fb, fa = signal.butter(3, 1e-2)
 
 for i in range(Ex_num):
     for j in range(Ta_num):
@@ -138,40 +138,22 @@ for i in range(Ex_num):
         
 
 
-        if i == 1 and j == 2:
+        if i == 2 and j == 2:
             X_test = X_data
             Y_test = Y_data
 
+        # else:
+        if (FirstFlag):
+            X_data_all = X_data
+            Y_data_all = Y_data
+            FirstFlag = False
         else:
-            if (FirstFlag):
-                X_data_all = X_data
-                Y_data_all = Y_data
-                FirstFlag = False
-            else:
-                X_data_all = np.concatenate((X_data_all,X_data),axis=0)
-                Y_data_all = np.concatenate((Y_data_all,Y_data),axis=0)
-            print('X_data_all shape:', np.shape(X_data_all))
-            print('Y_data_all shape:', np.shape(Y_data_all))
+            X_data_all = np.concatenate((X_data_all,X_data),axis=0)
+            Y_data_all = np.concatenate((Y_data_all,Y_data),axis=0)
+        print('X_data_all shape:', np.shape(X_data_all))
+        print('Y_data_all shape:', np.shape(Y_data_all))
 
 
-# print('Total_body_rotation_list length:', len(Total_body_rotation_list))
-# print('Total_euler_angle_list shape:', np.shape(Total_euler_angle_list))
-
-# print('Total_body_translation_list shape:', np.shape(Total_body_translation_list))
-# print('Total_translation_vel_list_in_body shape:', np.shape(Total_translation_vel_list_in_body))
-# print('Total_Freq_stroke shape:', np.shape(Total_Freq_stroke))
-# print('Total_pitch_input shape:', np.shape(Total_pitch_input))
-# print('Total_roll_input shape:', np.shape(Total_roll_input))
-# print('Total_yaw_input shape:', np.shape(Total_yaw_input))
-# print('Total_Angular_velocity_filtered_vec shape:', np.shape(Total_Angular_velocity_filtered_vec))
-
-# print('Total_euler_angle_list: ', Total_euler_angle_list)
-
-# for i in range(Ex_num):
-#     for j in range(Ta_num):
-#         path = Dir + Experiment_name_list[i] + Task_list[j] + Rear_name
-#         print('path',path)
-#         Data =  scio.loadmat(path)
 
 
 _,dim = np.shape(X_data)
@@ -179,7 +161,7 @@ print('dim:',dim)
 
 
 
-ran = np.linspace(start = 0, stop = len(X_data_all)-1, num = 1000, dtype = int)
+ran = np.linspace(start = 0, stop = len(X_data_all)-1, num = 2000, dtype = int)
 
 train_X = X_data_all[ran,:]
 train_Y = Y_data_all[ran,:]
@@ -187,8 +169,9 @@ train_Y = Y_data_all[ran,:]
 
 
 gpr = Gaussian_Process_Regression('scalar_para_von_mises_RBF_kernel_with_9_rot_vec')
-gpr.fit(train_X, train_Y)
-gpr =Gram_optimize(gpr, 500, 12)
+gpr.cache(train_X, train_Y)
+gpr = DGram_optimize(gpr, 1000, 100)
+# gpr =ConEn_optimize(gpr, 1000, 100, 100)
 # gpr.remove_feature_at([0,1,3])
 [mu, cov] = gpr.predict(X_test)
 

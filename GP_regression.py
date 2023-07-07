@@ -14,7 +14,7 @@ class scalar_para_von_mises_RBF_kernel:
          return (First_part + Second_part)
 
 class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
-    def __init__(self, feature_num, default_theta_Rot = 0.5, default_theta_Vec = 0.5, default_l = 0.7):
+    def __init__(self, feature_num, default_theta_Rot = 0.8, default_theta_Vec = 0.8, default_l = 0.7):
         self. sigma1 = default_theta_Rot
         self. sigma2 = default_theta_Vec
         self. l      = default_l
@@ -121,14 +121,14 @@ class Gaussian_Process_Regression:
 
                  # [feature_num] *  [feature_num X feature_num] * [feature_num X output_dim] = [1 X output_dim]
 
-def ConEn_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num):
+def ConEn_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, batch_size):
     serials = random.sample(range(gpr. feature_num),initial_num)
-    print('ConEn_optimize_feature_num:', gpr. feature_num)
-
     X_data = gpr.X[serials,:]
     Y_data = gpr.Y[serials,:]
 
     remain_data_serial = set([i for i in range(gpr.feature_num)]) - set(serials)
+
+    count = target_num - initial_num
 
     for k in range(target_num - initial_num):
         # Gram_matrix_before = gpr.kernel.compute(X_data, X_data)
@@ -143,11 +143,27 @@ def ConEn_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num):
             
             critics_index[h] = - np.linalg.det(Gram_matrix_after)
 
-        selected_one = critics_index.index(max(critics_index))
-        X_data = np.row_stack((X_data, gpr.X[list_remain_data_serial[selected_one]]))
-        Y_data = np.row_stack((Y_data, gpr.Y[list_remain_data_serial[selected_one]]))
+        if count > batch_size:
+            md_batch_size = batch_size
+        else:
+            md_batch_size = count
 
-        remain_data_serial = remain_data_serial - set([selected_one])
+        critic_ind_sort =  np.argsort(critics_index)
+        choose_sort = critic_ind_sort[(len(critics_index) - md_batch_size) : len(critics_index)]
+        # choose_sort = critic_ind_sort[0 :md_batch_size]
+        print('choose_sort:',choose_sort)
+        X_data = np.row_stack((X_data, gpr.X[choose_sort,:]))
+        Y_data = np.row_stack((Y_data, gpr.Y[choose_sort,:]))
+
+        remain_data_serial = remain_data_serial - set(choose_sort)
+       
+        
+        count = count - md_batch_size
+
+        print('ConEn_optimize process', 100 * (1 - (count) / (target_num - initial_num)), '%')
+        
+        if count <= 0:
+            break;
 
     gpr.fit(X_data, Y_data)
 
@@ -155,10 +171,12 @@ def ConEn_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num):
 
             # Y_data_temp = np.row_stack((Y_data, gpr.Y[list_remain_data_serial[h]]))
 
-def Gram_optimize(gpr:Gaussian_Process_Regression, target_num, compare_seed_num):
+def DGram_optimize(gpr:Gaussian_Process_Regression, target_num, compare_seed_num):
     critics_index = np.zeros(gpr. feature_num) 
     for k in range(gpr. feature_num):
-        ran = random.sample(range(gpr. feature_num),compare_seed_num)
+        sample_serial = set(range(gpr. feature_num))
+        sample_serial = sample_serial - set([k])
+        ran = random.sample(list(sample_serial),compare_seed_num)
         
         X_test = gpr.X[ran,:]
         X_test_plus_here = np.row_stack((X_test, np.array([gpr.X[k,:]])))
@@ -241,19 +259,17 @@ def PI_Bayes_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num):
 
     return gpr
 
-def Exp_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num):
+def Exp_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, batch_size):
     from scipy.stats import norm
     serials = random.sample(range(gpr. feature_num),initial_num)
     X_data = gpr.X[serials,:]
     Y_data = gpr.Y[serials,:]
 
 
-    print('X_data_shape:',np.shape(X_data))
-    print('Y_data_shape:',np.shape(Y_data))
-
     remain_data_serial = set([i for i in range(gpr.feature_num)]) - set(serials)
     # exp_critics = np.zeros(target_num - initial_num)
-
+    count = target_num - initial_num
+    
     for k in range(target_num - initial_num):
         Gram_matrix =np.mat(np.zeros([initial_num + k, initial_num + k]))
         for i in range( initial_num + k ):
