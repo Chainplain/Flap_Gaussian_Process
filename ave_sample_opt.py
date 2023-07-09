@@ -3,7 +3,7 @@ import numpy as np
 from GP_regression import Gaussian_Process_Regression
 from GP_regression import DGram_optimize
 from GP_regression import PI_Bayes_optimize
-from GP_regression import Exp_optimize
+from GP_regression import Error_optimize
 from GP_regression import ConEn_optimize
 
 import scipy.io as scio
@@ -169,9 +169,10 @@ train_Y = Y_data_all[ran,:]
 
 
 gpr = Gaussian_Process_Regression('scalar_para_von_mises_RBF_kernel_with_9_rot_vec')
-gpr.cache(train_X, train_Y)
-gpr = DGram_optimize(gpr, 1000, 100)
-# gpr =ConEn_optimize(gpr, 1000, 100, 100)
+gpr.fit(train_X, train_Y)
+# gpr = DGram_optimize(gpr, 1000, 100)
+# gpr = ConEn_optimize(gpr, 500, 100, 100)
+gpr = Error_optimize(gpr, 1000, 100, 100)
 # gpr.remove_feature_at([0,1,3])
 [mu, cov] = gpr.predict(X_test)
 
