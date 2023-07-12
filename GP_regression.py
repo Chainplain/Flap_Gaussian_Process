@@ -14,7 +14,7 @@ class scalar_para_von_mises_RBF_kernel:
          return (First_part + Second_part)
 
 class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
-    def __init__(self, feature_num, default_theta_Rot = 0.8, default_theta_Vec = 0.8, default_l = 0.7):
+    def __init__(self, feature_num, default_theta_Rot = 0.8, default_theta_Vec = 0.8, default_l = 0.8):
         self. sigma1 = default_theta_Rot
         self. sigma2 = default_theta_Vec
         self. l      = default_l
@@ -26,27 +26,34 @@ class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
 
 
         # print('shape_of_input1:', np.shape(input1))
-        # print('shape_of_input1:', np.shape(input2))
+        # print('shape_of_input2:', np.shape(input2))
 
         fst_input1 = input1[:,0:9]
         fst_input2 = input2[:,0:9]
 
+        # print('shape_of_fst_input1:', np.shape(fst_input1))
+        # print('shape_of_fst_input2:', np.shape(fst_input2))
+
         mul_matrix = np.matmul(fst_input1, fst_input2.T)
+        # print('mul_matrix:',mul_matrix)
+
 
         fst_mat = self. sigma1  ** 2 * np.exp( mul_matrix)
 
-        # print('shape_of_mul_matrix:', np.shape(mul_matrix))
+        # print('fst_mat:', fst_mat)
 
         sec_input1 = input1[:,9:]
         sec_input2 = input2[:,9:]
 
-        
+        # print('np.sum(sec_input1**2, 1).reshape(-1, 1):', np.sum(sec_input1**2, 1).reshape(-1, 1))
 
         dist_matrix = np.sum(sec_input1**2, 1).reshape(-1, 1) + np.sum(sec_input2**2, 1) - 2 * np.dot(sec_input1, sec_input2.T)
 
-        # print('shape_of_dist_matrix:', np.shape(dist_matrix))
+        # print('dist_matrix:', dist_matrix)
 
         sec_mat = self. sigma2  ** 2 * np.exp(- 0.5 / self. l ** 2 * dist_matrix)
+        # print('sec_mat:', sec_mat)
+
         return  np.multiply(fst_mat, sec_mat)
 
 
@@ -131,17 +138,24 @@ def ConEn_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, bat
     count = target_num - initial_num
 
     while count > 0:
-        # Gram_matrix_before = gpr.kernel.compute(X_data, X_data)
+        Gram_matrix= gpr.kernel.compute(X_data, X_data)
+        Gram_inv =np.linalg.pinv(np.mat( Gram_matrix) + 1e-10 * np.eye(Gram_matrix.shape[0]))
 
         list_remain_data_serial = list(remain_data_serial)
         
         critics_index = [0.0] * len(list_remain_data_serial)
 
-        for h in range(len (list_remain_data_serial)):
-            X_data_temp = np.row_stack((X_data, gpr.X[list_remain_data_serial[h]]))
-            Gram_matrix_after = gpr.kernel.compute(X_data_temp, X_data_temp)
-            
-            critics_index[h] = np.linalg.det(Gram_matrix_after)
+        # for h in range(len (list_remain_data_serial)):
+        #     # X_data_temp = np.row_stack((X_data, gpr.X[list_remain_data_serial[h]]))
+        #     # Gram_matrix_after = gpr.kernel.compute(X_data_temp, X_data_temp)
+        #     # print('gpr.X[list_remain_data_serial[h]]:', gpr.X[list_remain_data_serial[h]])
+        #     # print('gpr.X[list_remain_data_serial[h]]:', np.mat(gpr.X[list_remain_data_serial[h]]))
+        Kzz = gpr. kernel. compute(gpr.X[list_remain_data_serial,:],gpr.X[list_remain_data_serial,:])
+        print('shape_of_Kzz:', np.shape(Kzz))
+        KXz = gpr. kernel. compute(X_data, gpr.X[list_remain_data_serial,:])
+        cov_predict = Kzz - KXz.T.dot( Gram_inv).dot(KXz)
+
+        critics_index =  1.96 *  np.array(np.sqrt(np.diag(cov_predict)))
 
         if count > batch_size:
             md_batch_size = batch_size
@@ -313,6 +327,71 @@ def Error_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, bat
         count = count - md_batch_size
 
         print('Error_optimize process', 100 * (1 - (count) / (target_num - initial_num)), '%')
+            
+    
+    gpr.fit(X_data, Y_data)
+
+    return gpr
+
+def UCB_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, batch_size, sqr_beta = 1):
+    from scipy.stats import norm
+    serials = random.sample(range(gpr. feature_num),initial_num)
+    X_data = gpr.X[serials,:]
+    Y_data = gpr.Y[serials,:]
+
+
+    remain_data_serial = set([i for i in range(gpr.feature_num)]) - set(serials)
+    # exp_critics = np.zeros(target_num - initial_num)
+    count = target_num - initial_num
+    
+    while count > 0:
+        Gram_matrix = gpr.kernel.compute(X_data, X_data)
+        Gram_inv =np.linalg.pinv(np.mat(Gram_matrix) + 1e-10 * np.eye(Gram_matrix.shape[0]))
+        print('Gram_inv_shape:', np.shape(Gram_inv))
+        list_remain_data_serial = list(remain_data_serial)
+            
+        # critics_index = [0.0] * len(list_remain_data_serial)
+
+        # Kzz = gpr. kernel. compute( gpr.X[list_remain_data_serial],  gpr.X[list_remain_data_serial])
+        Kzz = gpr. kernel. compute(gpr.X[list_remain_data_serial,:],gpr.X[list_remain_data_serial,:])
+        print('shape_of_Kzz:', np.shape(Kzz))
+        # KXz = gpr. kernel. compute(X_data, gpr.X[list_remain_data_serial,:])
+        KXz = gpr. kernel. compute( X_data,  gpr.X[list_remain_data_serial])
+
+        # [Xraw, Xcol] = np.shape(gpr.X[list_remain_data_serial])
+        mu_predict = KXz.T.dot(Gram_inv).dot(Y_data)
+        cov_predict = Kzz - KXz.T.dot( Gram_inv).dot(KXz)
+        
+        critics_index1 =  1.96 *  np.array(np.sqrt(np.diag(cov_predict)))
+        critics_index2 = np.linalg.norm(mu_predict - \
+                                       gpr.Y[list_remain_data_serial], axis = 1)       
+
+        # print('mu_predict:', mu_predict)
+        # print('mu_predict_shape:', np.shape(mu_predict))
+        # print('mu_predict_norm:', np.linalg.norm(mu_predict,axis = 1))
+        critics_index = critics_index1 + sqr_beta * critics_index2
+
+        if count > batch_size:
+            md_batch_size = batch_size
+        else:
+            md_batch_size = count
+
+        critic_ind_sort =  np.argsort(critics_index)
+        choose_sort = critic_ind_sort[(len(critics_index) - md_batch_size) : len(critics_index)]
+        # choose_sort = critic_ind_sort[0 :md_batch_size]
+        print('choose_sort:',choose_sort)
+
+        selected_data_serial = [ list_remain_data_serial[i] for i in choose_sort]
+        print('list_remain_data_serial[choose_sort]:',selected_data_serial)
+        X_data = np.row_stack((X_data, gpr.X[selected_data_serial,:]))
+        Y_data = np.row_stack((Y_data, gpr.Y[selected_data_serial,:]))
+
+        remain_data_serial = remain_data_serial - set(selected_data_serial)
+    
+        
+        count = count - md_batch_size
+
+        print('UCB_optimize process', 100 * (1 - (count) / (target_num - initial_num)), '%')
             
     
     gpr.fit(X_data, Y_data)

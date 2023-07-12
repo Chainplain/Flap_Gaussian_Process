@@ -5,6 +5,7 @@ from GP_regression import DGram_optimize
 from GP_regression import PI_Bayes_optimize
 from GP_regression import Error_optimize
 from GP_regression import ConEn_optimize
+from GP_regression import UCB_optimize
 
 import scipy.io as scio
 from scipy.spatial.transform import Rotation as R
@@ -67,6 +68,7 @@ for i in range(Ex_num):
         Total_Angular_velocity_filtered_vec  = Total_Angular_velocity_filtered_list[:,:,0]
         Total_Angular_acc_list = gnerate_rate_with_time_step(Total_Angular_velocity_filtered_vec, TIME_STEP)
         Total_translation_vel_list = gnerate_rate_with_time_step(Total_body_translation_list, TIME_STEP)
+        # print('Total_body_translation_list:', Total_body_translation_list)
         
         Total_translation_vel_list_filtered = \
             np.zeros(np.shape(Total_translation_vel_list))
@@ -138,20 +140,20 @@ for i in range(Ex_num):
         
 
 
-        if i == 2 and j == 2:
+        if i == 1 and j == 2:
             X_test = X_data
             Y_test = Y_data
 
-        # else:
-        if (FirstFlag):
-            X_data_all = X_data
-            Y_data_all = Y_data
-            FirstFlag = False
         else:
-            X_data_all = np.concatenate((X_data_all,X_data),axis=0)
-            Y_data_all = np.concatenate((Y_data_all,Y_data),axis=0)
-        print('X_data_all shape:', np.shape(X_data_all))
-        print('Y_data_all shape:', np.shape(Y_data_all))
+            if (FirstFlag):
+                X_data_all = X_data
+                Y_data_all = Y_data
+                FirstFlag = False
+            else:
+                X_data_all = np.concatenate((X_data_all,X_data),axis=0)
+                Y_data_all = np.concatenate((Y_data_all,Y_data),axis=0)
+            print('X_data_all shape:', np.shape(X_data_all))
+            print('Y_data_all shape:', np.shape(Y_data_all))
 
 
 
@@ -161,7 +163,7 @@ print('dim:',dim)
 
 
 
-ran = np.linspace(start = 0, stop = len(X_data_all)-1, num = 2000, dtype = int)
+ran = np.linspace(start = 0, stop = len(X_data_all)-1, num = 3000, dtype = int)
 
 train_X = X_data_all[ran,:]
 train_Y = Y_data_all[ran,:]
@@ -169,10 +171,12 @@ train_Y = Y_data_all[ran,:]
 
 
 gpr = Gaussian_Process_Regression('scalar_para_von_mises_RBF_kernel_with_9_rot_vec')
-gpr.fit(train_X, train_Y)
+gpr.cache(train_X, train_Y)
 # gpr = DGram_optimize(gpr, 1000, 100)
 # gpr = ConEn_optimize(gpr, 500, 100, 100)
-gpr = Error_optimize(gpr, 1000, 100, 100)
+
+gpr = UCB_optimize(gpr, 1000, 100, 100)
+# gpr = Error_optimize(gpr, 1000, 100, 100)
 # gpr.remove_feature_at([0,1,3])
 [mu, cov] = gpr.predict(X_test)
 
