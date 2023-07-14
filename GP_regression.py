@@ -14,7 +14,7 @@ class scalar_para_von_mises_RBF_kernel:
          return (First_part + Second_part)
 
 class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
-    def __init__(self, feature_num, default_theta_Rot = 0.8, default_theta_Vec = 0.8, default_l = 0.8):
+    def __init__(self, feature_num, default_theta_Rot = 0.8, default_theta_Vec = 0.8, default_l = 0.9):
         self. sigma1 = default_theta_Rot
         self. sigma2 = default_theta_Vec
         self. l      = default_l
@@ -58,7 +58,7 @@ class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
 
 
 class square_exponential_kernel:
-    def __init__(self, feature_num, default_sigma_f = 0.5, default_l = 0.5):
+    def __init__(self, feature_num, default_sigma_f = 0.8, default_l = 0.8):
         self. sigma = default_sigma_f
         self. l     = default_l
     def compute( self, input1, input2):
@@ -333,7 +333,7 @@ def Error_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, bat
 
     return gpr
 
-def UCB_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, batch_size, sqr_beta = 1):
+def UCB_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, batch_size, sqr_beta = 3):
     from scipy.stats import norm
     serials = random.sample(range(gpr. feature_num),initial_num)
     X_data = gpr.X[serials,:]
