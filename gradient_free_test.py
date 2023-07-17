@@ -4,7 +4,7 @@ def sphere_function(para):
     x = para["x"]
     y = para["y"]
 
-    return -(x * x + y * y)
+    return -(x * x *x * x + y * y + np.sin(y))
     
 import time
 start_time = time.time()
@@ -22,7 +22,7 @@ for i  in range(100):
         start_temp=1.2,
         annealing_rate=0.99,
     )
-    opt.search(sphere_function, n_iter=50,verbosity=[])
+    opt.search(sphere_function, n_iter=100,verbosity=[])
 print(opt.best_para)
 end_time = time.time()
 print('elapsed time:', end_time - start_time)

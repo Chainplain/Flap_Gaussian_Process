@@ -1,0 +1,89 @@
+%%% Written by Chainplain 2023-7-17
+
+sampleFreq = 5;
+sampleDif  = 8;
+
+MMS_ConEN = zeros(sampleFreq,sampleDif);
+MUS_ConEN = zeros(sampleFreq,sampleDif);
+MMS_Error = zeros(sampleFreq,sampleDif);
+MUS_Error = zeros(sampleFreq,sampleDif);
+MMS_UCB = zeros(sampleFreq,sampleDif);
+MUS_UCB = zeros(sampleFreq,sampleDif);
+MMS_DGram = zeros(sampleFreq,sampleDif);
+MUS_DGram = zeros(sampleFreq,sampleDif);
+
+for N = 1:sampleFreq 
+    load('ConEn_learning_results'+ string(N-1) +'.mat')
+    MMS_ConEN(N,:) = MMS;
+    MUS_ConEN(N,:) = MUS;
+
+    load('Error_learning_results'+ string(N-1) +'.mat')
+    MMS_Error(N,:) = MMS;
+    MUS_Error(N,:) = MUS;
+
+    load('UCB_learning_results'+ string(N-1) +'.mat')
+    MMS_UCB(N,:) = MMS;
+    MUS_UCB(N,:) = MUS;
+
+    load('DGram_learning_results'+ string(N-1) +'.mat')
+    MMS_DGram(N,:) = MMS;
+    MUS_DGram(N,:) = MUS;
+end
+
+figure;
+set(gcf,'Position',[200,100,600,400]);
+lw = 1;
+
+
+Deepred = '#b4534b';
+Deepgreen = '#6d8346';
+Deepblue = '#426ab3';
+Vio   = '#8552a1';
+
+mean_MMS_DGram = mean(MMS_DGram);
+mean_MMS_ConEN = mean(MMS_ConEN);
+mean_MMS_Error = mean(MMS_Error);
+mean_MMS_UCB = mean(MMS_UCB);
+
+std_MMS_DGram = std(MMS_DGram)./2; 
+std_MMS_ConEN = std(MMS_ConEN)./2; 
+std_MMS_Error = std(MMS_Error)./2; 
+std_MMS_UCB = std(MMS_UCB)./2; 
+
+% grid on;
+% h = gca;
+% set(h,'LineWidth',1,'GridLineStyle','--','GridAlpha',1,'GridColor',[0.92,0.9,0.88])
+subplot(3,2,1);
+boxchart(MMS_DGram)
+boxchart(MMS_ConEN)
+boxchart(MMS_Error)
+boxchart(MMS_UCB)
+
+subplot(3,1,2);
+hold on;
+plot(kernel_target_nums, mean_MMS_DGram,'-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Deepred);
+plot(kernel_target_nums, mean_MMS_ConEN,'-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Deepgreen);
+plot(kernel_target_nums, mean_MMS_Error,'-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Deepblue);
+plot(kernel_target_nums, mean_MMS_UCB,'-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Vio);
+
+errorbar(kernel_target_nums, mean_MMS_DGram,std_MMS_DGram,'Linewidth',lw,'color',Deepred)
+errorbar(kernel_target_nums, mean_MMS_ConEN,std_MMS_ConEN,'Linewidth',lw,'color',Deepgreen)
+errorbar(kernel_target_nums, mean_MMS_Error,std_MMS_Error,'Linewidth',lw,'color',Deepblue)
+errorbar(kernel_target_nums, mean_MMS_UCB,std_MMS_UCB,'Linewidth',lw,'color',Vio)
+
+legend('GSES','VBS','EBS','UCB-BS');
+hold off;
+
+% figure;s
+
+% grid on;
+% h = gca;
+% set(h,'LineWidth',1,'GridLineStyle','--','GridAlpha',1,'GridColor',[0.92,0.9,0.88])
+subplot(3,1,3);
+hold on;
+plot(kernel_target_nums, MUS_DGram,'o-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Deepred);
+plot(kernel_target_nums, MUS_ConEN,'o-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Deepgreen);
+plot(kernel_target_nums, MUS_Error,'o-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Deepblue);
+plot(kernel_target_nums, MUS_UCB,'o-', 'Linewidth',lw, 'MarkerFaceColor','w','color',Vio);
+legend('GSES','VBS','EBS','UCB-BS');
+hold off;

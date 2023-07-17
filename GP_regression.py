@@ -19,6 +19,10 @@ class scalar_para_von_mises_RBF_kernel_with_9_rot_vec:
         self. sigma2 = default_theta_Vec
         self. l      = default_l
     def compute( self, input1, input2):
+        print('shape of input:', np.shape(input1))
+        # if input1.ndim == 1:
+        #     fst_input1 = input1[0:9]
+        # else:
         #  exp_in = np.dot(input1[0:9],input2[0:9])
         #  First_part = self. theta1 * np.exp( exp_in )
         #  Second_part = self. theta2 * np.exp(-   np.linalg.norm((input1[9:] - input2[9:])**2) )
@@ -110,9 +114,9 @@ class Gaussian_Process_Regression:
              self.fit(self. X, self. Y)
             
         def predict(self, input_X):
-            [Xraw, Xcol] = np.shape(input_X)
-            if Xcol != self. feature_dim:
-                  logging.error("Prediction input dimensions of input do not equal to training!!!")
+            # [Xraw, Xcol] = np.shape(input_X)
+            # if Xcol != self. feature_dim:
+            #       logging.error("Prediction input dimensions of input do not equal to training!!!")
             # print('Xraw',Xraw)
             # print('self. output_dim',self. output_dim)
 
@@ -205,72 +209,15 @@ def DGram_optimize(gpr:Gaussian_Process_Regression, target_num, compare_seed_num
         print('Gram_optimize process', 100 * (k+1) / gpr. feature_num, '%')
 
     critic_ind_sort =  np.argsort(critics_index)
-    choose_sort = critic_ind_sort[(gpr. feature_num - target_num) : gpr. feature_num]
+    # print('critic_ind_sort',critic_ind_sort)
+    # print('len(critics_index) - target_num',len(critics_index) - target_num)
+    # print('len(critics_index)',len(critics_index))
+    choose_sort = critic_ind_sort[(len(critics_index) - target_num) : len(critics_index)]
+    # choose_sort = critic_ind_sort[0 :md_batch_size]
+    print('choose_sort:',choose_sort)
 
     X_data = gpr.X[choose_sort,:]
     Y_data = gpr.Y[choose_sort,:]
-    gpr.fit(X_data, Y_data)
-
-    return gpr
-
-def PI_Bayes_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num):
-    serials = random.sample(range(gpr. feature_num),initial_num)
-    X_data = gpr.X[serials,:]
-    Y_data = gpr.Y[serials,:]
-
-
-    print('X_data_shape:',np.shape(X_data))
-    print('Y_data_shape:',np.shape(Y_data))
-
-    remain_data_serial = set([i for i in range(gpr.feature_num)]) - set(serials)
-    # cov_predict = np.zeros(target_num - initial_num)
-
-    for k in range(target_num - initial_num):
-        Gram_matrix =np.mat(np.zeros([initial_num + k, initial_num + k]))
-        for i in range( initial_num + k ):
-            for j in range( initial_num + k ):
-                if i <= j:
-                    Gram_matrix[i,j] = gpr. kernel. compute(X_data[i], X_data[j])
-                    if Gram_matrix[i,j] < 0:
-                        Gram_matrix[i,j] = 0
-                else:
-                    Gram_matrix[i,j] = Gram_matrix[j,i]
-        Gram_matrix_inv = np.linalg.pinv(np.mat( Gram_matrix))
-        
-        list_remain_data_serial = list(remain_data_serial)
-        PI = [0.0] * len(list_remain_data_serial)
-
-        for i in range(len(list_remain_data_serial)):
-            K_zX =  [0.0] * (initial_num + k)
-            for j in range( initial_num + k ):   
-                K_zX[j] = gpr. kernel. compute(gpr.X[list_remain_data_serial[i]], X_data[j])
-            K_zz = gpr. kernel. compute(gpr.X[list_remain_data_serial[i]],\
-                                         gpr.X[list_remain_data_serial[i]])
-            mu_predict = np.mat(K_zX).dot(Gram_matrix_inv).dot( np.mat(Y_data))
-            mat_cov = K_zz - np.mat(K_zX).dot(Gram_matrix_inv).dot(np.mat(K_zX).T)
-            cov_predict = mat_cov[0,0]
-            # print('mu_predict - np.mat(Y_data)', mu_predict - gpr.Y[list_remain_data_serial[i]])
-            distance = np.linalg.norm( np.array(mu_predict) -np.array(gpr.Y[list_remain_data_serial[i]]))
-            PI[i] = np.exp( 0.1 + distance**2 )
-
-        
-        kth_select = PI.index(max(PI))
-        print('kth_select: ',kth_select)
-        remain_data_serial = remain_data_serial - set([kth_select])
-        
-        
-        # print(' gpr.X[list_remain_data_serial[kth_select]]:', gpr.X[list_remain_data_serial[kth_select]])
-
-        print('X_data_shape:',np.shape(X_data))
-        # print('gpr.X_inserted_shape:',np.shape(gpr.X[list_remain_data_serial[kth_select]]))
-
-        X_data = np.row_stack((X_data, gpr.X[list_remain_data_serial[kth_select]]))
-        Y_data = np.row_stack((Y_data, gpr.Y[list_remain_data_serial[kth_select]]))
-
-
-        print('Bayes_optimize process', 100 * (k+1) / (target_num - initial_num), '%')
-
-    
     gpr.fit(X_data, Y_data)
 
     return gpr
@@ -333,7 +280,7 @@ def Error_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, bat
 
     return gpr
 
-def UCB_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, batch_size, sqr_beta = 3):
+def UCB_optimize(gpr:Gaussian_Process_Regression, target_num, initial_num, batch_size, sqr_beta = 10):
     from scipy.stats import norm
     serials = random.sample(range(gpr. feature_num),initial_num)
     X_data = gpr.X[serials,:]

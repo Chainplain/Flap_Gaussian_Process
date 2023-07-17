@@ -2,7 +2,6 @@ import numpy as np
 # from GP_regression import scalar_para_RBF_kernel
 from GP_regression import Gaussian_Process_Regression
 from GP_regression import DGram_optimize
-from GP_regression import PI_Bayes_optimize
 from GP_regression import Error_optimize
 from GP_regression import ConEn_optimize
 from GP_regression import UCB_optimize
@@ -13,6 +12,8 @@ from scipy import signal
 import random
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error as MSE
+
+import pickle
 
 def gnerate_rate_with_time_step(input_list, time_step):
     rate = np.zeros( np.shape( input_list ) )
@@ -156,7 +157,7 @@ for i in range(Ex_num):
     
 
 
-    if i == 11:
+    if i == 10:
         X_test = X_data
         Y_test = Y_data
 
@@ -179,7 +180,7 @@ print('dim:',dim)
 
 
 
-ran = np.linspace(start = 0, stop = len(X_data_all)-1, num = 10000, dtype = int)
+ran = np.linspace(start = 0, stop = len(X_data_all)-1, num = 5000, dtype = int)
 
 train_X = X_data_all[ran,:]
 train_Y = Y_data_all[ran,:]
@@ -189,9 +190,9 @@ train_Y = Y_data_all[ran,:]
 gpr = Gaussian_Process_Regression('scalar_para_von_mises_RBF_kernel_with_9_rot_vec')
 gpr.cache(train_X, train_Y)
 # gpr = DGram_optimize(gpr, 1000, 100)
-# gpr = ConEn_optimize(gpr, 500, 100, 100)
+# gpr = ConEn_optimize(gpr, 200, 50, 50)
 
-gpr = UCB_optimize(gpr, 3000, 300, 300)
+gpr = UCB_optimize(gpr, 2000, 200, 200)
 # gpr = Error_optimize(gpr, 1000, 100, 100)
 # gpr.remove_feature_at([0,1,3])
 [mu, cov] = gpr.predict(X_test)
@@ -213,9 +214,17 @@ print('shape mu', np.shape(mu))
 print('shape cov', np.shape(cov))
 uncertainty = 1.96 *  np.array(np.sqrt(np.diag(cov)))
 
+predict_y_s = []
+true_y_s = []
+
 for i in range(6):
     predict_y=np.array(mu[:,i].ravel().tolist()[0])
     true_y   =Y_test[:,i].ravel()
+
+    true_y_s. append(true_y)
+    predict_y_s. append(predict_y)
+
+
 
     error_y  = predict_y - true_y
 
@@ -225,16 +234,27 @@ for i in range(6):
 
     print('MSE:', MSE(predict_y,true_y ))
     print('Mean uncertainty:', np.mean(uncertainty ))
-
+    # fig, ax = plt.subplots()
     plt.subplot(6, 1, i+1)
-    plt.title("plot "+str(i+1))
+    # ax.spines['right'].set_visible(False)
+    # ax.spines['top'].set_visible(False)
+    # plt.title("plot "+str(i+1))
     time =  np.linspace(start = 1, stop = 20, num = 20000)
 
-    plt.plot(time,predict_y, label="Estimated signal")
-    plt.plot(time,Y_test[:,i].ravel(), label="Expected signal")
-    
+    plt.plot(time,predict_y)
+    plt.plot(time,true_y)
+
     plt.fill_between(time, predict_y + uncertainty, predict_y - uncertainty, alpha=0.5)
-    plt.legend( loc='upper right')
+    # plt.legend( loc='upper right')
 plt.show()
 # print('uncertainty:',uncertainty)
 
+
+fn = 'learnedGPR.pkl'
+with open(fn, 'wb') as f:
+    pickle.dump(gpr, f)
+np.save('X_test', X_test)
+np.save('Y_test', Y_test)
+# scio.savemat('show###.mat', {'true_y_s':true_y_s,\
+#                           'predict_y_s':predict_y_s,
+#                           'uncertainty':uncertainty})
