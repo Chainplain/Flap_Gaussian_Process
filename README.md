@@ -10,5 +10,14 @@ a batch-wise data selection approach is employed. By taking advantage of the lea
 an optimization-based control strategy is proposed to refine actuator inputs using acquired knowledge. 
 The superiority of the proposed control strategy are validated by high-fidelity numerical simulations.
 
-## Installation
-Please refer to https://github.com/Chainplain/FlappingwingSimu#installation for installation.
+## Packages
+```python
+import scipy.io as scio
+from scipy.spatial.transform import Rotation as R
+from scipy import signal
+import random
+import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error as MSE
+
+import pickle
+```
